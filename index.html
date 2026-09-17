@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220">
+<title>Racha das Nações</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#0b1220;color:white;padding:20px 16px;position:sticky;top:0;z-index:5}.head{max-width:1100px;margin:auto}
+h1{margin:0;font-size:22px}.sub{font-size:12px;color:#aeb8c8;margin-top:4px}
+main{max-width:1100px;margin:auto;padding:16px}.tabs{display:flex;gap:8px;overflow:auto;margin-bottom:16px}
+.tab,.btn{border:0;border-radius:9px;padding:10px 13px;font-weight:800;cursor:pointer}.tab{background:white;border:1px solid #e5e7eb;white-space:nowrap}.tab.active,.btn{background:#111827;color:white}
+.btn.secondary,.tab:not(.active){color:#111827}.btn.secondary{background:#eef0f3}.btn.green{background:#166534}
+.card{background:white;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+label{display:block;font-size:12px;font-weight:700;color:#4b5563;margin-bottom:5px}
+input,select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;background:white}
+.notice{padding:10px 12px;border-radius:9px;background:#f1f5f9;color:#475569;font-size:13px;margin-bottom:12px}.warn{background:#fffbeb;color:#92400e}
+.team{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.teamtitle{display:flex;align-items:center;gap:8px;margin-bottom:10px}.emoji{font-size:24px}
+.player{display:grid;grid-template-columns:1fr 150px;gap:8px;margin-bottom:7px}
+.games{display:grid;gap:10px}.game{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.gtop{display:flex;justify-content:space-between;color:#6b7280;font-size:12px;margin-bottom:8px}.gname{font-weight:800;color:#111827}
+.score{display:grid;grid-template-columns:1fr 60px 10px 60px 1fr;gap:8px;align-items:center}.score input{text-align:center;font-size:18px;font-weight:800}.tn{text-align:center;font-weight:800}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 7px;border-bottom:1px solid #e5e7eb;text-align:center}th{font-size:11px;color:#6b7280}th:first-child,td:first-child{text-align:left}
+.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.place{text-align:center;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#f7f7f8}.place strong{display:block}
+.history{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid #e5e7eb;border-radius:11px;padding:12px;margin-bottom:8px}
+.empty{text-align:center;color:#6b7280;padding:25px}footer{text-align:center;color:#9ca3af;font-size:11px;padding:0 16px 30px}
+@media(max-width:700px){.grid,.grid4{grid-template-columns:1fr}.player{grid-template-columns:1fr}.score{grid-template-columns:1fr 48px 8px 48px 1fr}.tn{font-size:12px}.podium{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="head"><h1>🏆 RACHA DAS NAÇÕES</h1><div class="sub">Gestão semanal • escalação • jogos • classificação • histórico</div></div></header>
+<main>
+<div class="tabs">
+<button class="tab active" data-tab="setup">Escalação</button><button class="tab" data-tab="games">Jogos</button>
+<button class="tab" data-tab="table">Classificação</button><button class="tab" data-tab="history">Histórico</button>
+</div>
+
+<section id="setup" class="view">
+<div class="card"><h2>Dados da rodada</h2><div class="grid">
+<div><label>Nome da rodada</label><input id="roundName" placeholder="Ex.: Racha #12"></div>
+<div><label>Data</label><input id="roundDate" type="date"></div>
+</div></div>
+
+<div class="card"><h2>Times</h2><div id="teams" class="grid4"></div></div>
+
+<div class="card"><h2>Jogadores</h2><div class="notice">Cadastre até 20 jogadores e distribua cada jogador entre os 4 times. A escalação pode ser alterada a cada rodada.</div><div id="players"></div></div>
+
+<div class="btns">
+<button class="btn green" onclick="saveState()">💾 Salvar rodada</button>
+<button class="btn secondary" onclick="newRound()">➕ Nova rodada</button>
+<button class="btn secondary" onclick="exportWeek()">⬇️ Exportar</button>
+<label class="btn secondary">⬆️ Importar<input id="importFile" type="file" accept=".json" hidden></label>
+</div>
+</section>
+
+<section id="games" class="view" style="display:none"><div class="card"><h2>Jogos</h2>
+<div class="notice">Fase classificatória: 6 jogos, todos contra todos. Vitória = 3 pontos • Empate = 1 ponto • Derrota = 0 pontos.</div>
+<div id="gamesList" class="games"></div></div></section>
+
+<section id="table" class="view" style="display:none"><div class="card"><h2>Classificação</h2><div id="tableContent"></div></div></section>
+
+<section id="history" class="view" style="display:none"><div class="card"><h2>Histórico das rodadas</h2><div id="historyContent"></div></div></section>
+</main><footer>Racha das Nações • dados salvos neste navegador</footer>
+
+<script>
+const KEY="rdn_state_v2",HIST="rdn_history_v2";
+const matchups=[[0,1],[2,3],[0,2],[1,3],[0,3],[1,2]];
+const defaults=[{name:"Nauru",emoji:"🇳🇷"},{name:"Butão",emoji:"🇧🇹"},{name:"Transnístria",emoji:"🏴"},{name:"Vanuatu",emoji:"🇻🇺"}];
+
+function blank(){return{roundName:"Racha das Nações",roundDate:new Date().toISOString().slice(0,10),
+teams:JSON.parse(JSON.stringify(defaults)),players:Array.from({length:20},(_,i)=>({name:"",team:i%4})),
+scores:Array.from({length:8},()=>[null,null]),pens:[null,null]}}
+let state=load();
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||blank()}catch(e){return blank()}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(state))}
+function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function tn(i){return state.teams[i]?.name||"Time "+(i+1)}
+function fd(d){if(!d)return"";let[y,m,day]=d.split("-");return day+"/"+m+"/"+y}
+
+function renderSetup(){
+roundName.value=state.roundName||"";roundDate.value=state.roundDate||"";
+teams.innerHTML=state.teams.map((t,i)=>`<div class="team"><div class="teamtitle"><span class="emoji">${esc(t.emoji)}</span><b>Time ${i+1}</b></div>
+<div style="display:grid;grid-template-columns:55px 1fr;gap:7px"><input maxlength="4" value="${esc(t.emoji)}" onchange="state.teams[${i}].emoji=this.value;persist();renderAll()">
+<input value="${esc(t.name)}" onchange="state.teams[${i}].name=this.value;persist();renderAll()"></div></div>`).join("");
+players.innerHTML=state.players.map((p,i)=>`<div class="player"><input placeholder="Jogador ${i+1}" value="${esc(p.name)}" onchange="state.players[${i}].name=this.value;persist()">
+<select onchange="state.players[${i}].team=+this.value;persist()">${state.teams.map((t,j)=>`<option value="${j}" ${p.team===j?"selected":""}>${esc(t.emoji)} ${esc(t.name)}</option>`).join("")}</select></div>`).join("");
+}
+roundName.oninput=e=>{state.roundName=e.target.value;persist()};roundDate.onchange=e=>{state.roundDate=e.target.value;persist()};
+
+function standings(){
+let a=state.teams.map((_,i)=>({team:i,J:0,V:0,E:0,D:0,GP:0,GC:0,SG:0,Pts:0}));
+for(let k=0;k<6;k++){let[x,y]=state.scores[k];if(x==null||y==null)continue;let[ta,tb]=matchups[k],A=a[ta],B=a[tb];
+A.J++;B.J++;A.GP+=x;A.GC+=y;B.GP+=y;B.GC+=x;A.SG=A.GP-A.GC;B.SG=B.GP-B.GC;
+if(x>y){A.V++;A.Pts+=3;B.D++}else if(y>x){B.V++;B.Pts+=3;A.D++}else{A.E++;B.E++;A.Pts++;B.Pts++}}
+return a.sort((a,b)=>b.Pts-a.Pts||b.V-a.V||b.SG-a.SG||b.GP-a.GP)}
+function complete(){return state.scores.slice(0,6).every(s=>s[0]!=null&&s[1]!=null)}
+function setScore(k,s,v){state.scores[k][s]=v===""?null:Math.max(0,Math.floor(Number(v)));persist();renderAll()}
+function game(k,a,b,ko=false){
+let s=state.scores[k],tie=s[0]!=null&&s[1]!=null&&s[0]===s[1],pen="";
+if(ko&&tie)pen=`<div style="margin-top:9px"><label>Vencedor nos pênaltis</label><select onchange="state.pens[${k-6}]=this.value===''?null:+this.value;persist();renderAll()">
+<option value="">Selecione...</option><option value="${a}" ${state.pens[k-6]===a?"selected":""}>${esc(tn(a))}</option><option value="${b}" ${state.pens[k-6]===b?"selected":""}>${esc(tn(b))}</option></select></div>`;
+return`<div class="game"><div class="gtop"><span class="gname">${k<6?"Jogo "+(k+1)+" • Classificatória":k===6?"Jogo 7 • Jogo da Lanterna":"Jogo 8 • Grande Final"}</span><span>${ko?"mata-mata":"classificatória"}</span></div>
+<div class="score"><div class="tn">${esc(state.teams[a].emoji)} ${esc(tn(a))}</div><input type="number" min="0" value="${s[0]??""}" onchange="setScore(${k},0,this.value)">
+<b style="text-align:center">×</b><input type="number" min="0" value="${s[1]??""}" onchange="setScore(${k},1,this.value)"><div class="tn">${esc(state.teams[b].emoji)} ${esc(tn(b))}</div></div>${pen}</div>`}
+function renderGames(){
+let out="";for(let k=0;k<6;k++){let[a,b]=matchups[k];out+=game(k,a,b)}
+if(complete()){let q=standings();out+=game(6,q[2].team,q[3].team,true);out+=game(7,q[0].team,q[1].team,true)}
+else out+='<div class="notice warn">Preencha os 6 jogos da classificatória para liberar o Jogo da Lanterna e a Grande Final.</div>';
+gamesList.innerHTML=out}
+function winner(k){
+let q=standings(),pair=k===6?[q[2].team,q[3].team]:[q[0].team,q[1].team],s=state.scores[k];
+if(s[0]==null||s[1]==null)return null;if(s[0]>s[1])return pair[0];if(s[1]>s[0])return pair[1];return state.pens[k-6]??null}
+function renderTable(){
+let s=standings();tableContent.innerHTML=`<div style="overflow:auto"><table><thead><tr><th>Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Pts</th></tr></thead><tbody>
+${s.map((x,i)=>`<tr><td><b>${i+1}º ${esc(state.teams[x.team].emoji)} ${esc(tn(x.team))}</b></td><td>${x.J}</td><td>${x.V}</td><td>${x.E}</td><td>${x.D}</td><td>${x.GP}</td><td>${x.GC}</td><td>${x.SG}</td><td><b>${x.Pts}</b></td></tr>`).join("")}</tbody></table></div>
+${complete()?`<div class="podium"><div class="place">🥉<strong>${esc(tn(s[2].team))}</strong><small>3º lugar</small></div><div class="place">🏆<strong>${esc(winner(7)==null?"A definir":tn(winner(7)))}</strong><small>Campeão</small></div><div class="place">🥈<strong>${esc(winner(7)==null?"A definir":tn(winner(7)===s[0].team?s[1].team:s[0].team))}</strong><small>Vice-campeão</small></div></div>`:""}`}
+function renderHistory(){
+let h=JSON.parse(localStorage.getItem(HIST)||"[]");if(!h.length){historyContent.innerHTML='<div class="empty">Nenhuma rodada salva no histórico ainda.</div>';return}
+historyContent.innerHTML=h.map((r,i)=>`<div class="history"><div><b>${esc(r.name||"Rodada")}</b><br><small>${fd(r.date)}${r.champion!=null?" • 🏆 "+esc(r.teams[r.champion].name):""}</small></div><button class="btn secondary" onclick="restore(${i})">Abrir</button></div>`).join("")}
+function saveState(){persist();alert("Rodada salva neste navegador.")}
+function saveHistory(){let h=JSON.parse(localStorage.getItem(HIST)||"[]");h.unshift({id:Date.now(),name:state.roundName,date:state.roundDate,teams:state.teams,players:state.players,scores:state.scores,pens:state.pens,champion:complete()?winner(7):null});localStorage.setItem(HIST,JSON.stringify(h.slice(0,100)));renderHistory();alert("Rodada adicionada ao histórico.")}
+function restore(i){let r=JSON.parse(localStorage.getItem(HIST)||"[]")[i];if(!r)return;if(!confirm("Abrir esta rodada no editor?"))return;state={roundName:r.name,roundDate:r.date,teams:r.teams,players:r.players||blank().players,scores:r.scores,pens:r.pens||[null,null]};persist();renderAll();show("setup")}
+function newRound(){if(!confirm("Começar uma nova rodada?"))return;state=blank();persist();renderAll();show("setup")}
+function exportWeek(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));a.download="racha-das-nacoes-"+(state.roundDate||"rodada")+".json";a.click()}
+importFile.onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state=JSON.parse(r.result);persist();renderAll();alert("Rodada importada com sucesso.")}catch(x){alert("Arquivo inválido.")}};r.readAsText(f);e.target.value=""}
+function show(id){document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===id));document.querySelectorAll(".view").forEach(v=>v.style.display=v.id===id?"block":"none")}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>show(b.dataset.tab));
+function renderAll(){renderSetup();renderGames();renderTable();renderHistory()}renderAll();
+</script>
+</body>
+</html>
