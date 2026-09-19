@@ -116,7 +116,7 @@ if(s[0]==null||s[1]==null)return null;if(s[0]>s[1])return pair[0];if(s[1]>s[0])r
 function ko(k){let q=standings(),pair=k===6?[q[2].team,q[3].team]:[q[0].team,q[1].team],w=winner(k);return{w:w,l:w==null?null:(w===pair[0]?pair[1]:pair[0])}}
 function podium(){
 const c=ko(7),t=ko(6);
-const rows=[["🏆","Campeão",c.w,"gold"],["🥈","Vice-campeão",c.l,""],["🥉","3º lugar",t.w,""],["🏮","Lanterna da rodada",t.l,"lantern"]];
+const rows=[["🏆","Campeão",c.w,"gold"],["🥈","Vice-campeão",c.l,""],["🥉","3º lugar",t.w,""],["☠️","Lanterna da rodada",t.l,"lantern"]];
 return`<div class="podium">${rows.map(r=>`<div class="place ${r[3]}"><span class="medal">${r[0]}</span><div><small>${r[1]}</small><strong>${r[2]==null?"A definir":esc(state.teams[r[2]].emoji+" "+tn(r[2]))}</strong></div></div>`).join("")}</div>
 <div class="btns"><button class="btn green" onclick="saveHistory()">📌 Salvar no histórico</button></div>`}
 function renderTable(){
