@@ -23,10 +23,10 @@ input,select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;
 .score{display:grid;grid-template-columns:1fr 60px 10px 60px 1fr;gap:8px;align-items:center}.score input{text-align:center;font-size:18px;font-weight:800}.tn{text-align:center;font-weight:800}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 7px;border-bottom:1px solid #e5e7eb;text-align:center}th{font-size:11px;color:#6b7280}th:first-child,td:first-child{text-align:left}
-.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.place{text-align:center;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#f7f7f8}.place strong{display:block}
+.podium{display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px}.place{display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;background:#f7f7f8}.place .medal{font-size:28px}.place small{display:block;color:#6b7280;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.place strong{display:block;font-size:16px}.place.gold{background:#fffbeb;border-color:#fcd34d}.place.lantern{background:#fef2f2;border-color:#fecaca}
 .history{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid #e5e7eb;border-radius:11px;padding:12px;margin-bottom:8px}
 .empty{text-align:center;color:#6b7280;padding:25px}footer{text-align:center;color:#9ca3af;font-size:11px;padding:0 16px 30px}
-@media(max-width:700px){.grid,.grid4{grid-template-columns:1fr}.player{grid-template-columns:1fr}.score{grid-template-columns:1fr 48px 8px 48px 1fr}.tn{font-size:12px}.podium{grid-template-columns:1fr}}
+@media(max-width:700px){.grid,.grid4{grid-template-columns:1fr}.player{grid-template-columns:1fr}.score{grid-template-columns:1fr 48px 8px 48px 1fr}.tn{font-size:12px}}
 </style>
 </head>
 <body>
@@ -112,15 +112,22 @@ gamesList.innerHTML=out}
 function winner(k){
 let q=standings(),pair=k===6?[q[2].team,q[3].team]:[q[0].team,q[1].team],s=state.scores[k];
 if(s[0]==null||s[1]==null)return null;if(s[0]>s[1])return pair[0];if(s[1]>s[0])return pair[1];return state.pens[k-6]??null}
+
+function ko(k){let q=standings(),pair=k===6?[q[2].team,q[3].team]:[q[0].team,q[1].team],w=winner(k);return{w:w,l:w==null?null:(w===pair[0]?pair[1]:pair[0])}}
+function podium(){
+const c=ko(7),t=ko(6);
+const rows=[["🏆","Campeão",c.w,"gold"],["🥈","Vice-campeão",c.l,""],["🥉","3º lugar",t.w,""],["🏮","Lanterna da rodada",t.l,"lantern"]];
+return`<div class="podium">${rows.map(r=>`<div class="place ${r[3]}"><span class="medal">${r[0]}</span><div><small>${r[1]}</small><strong>${r[2]==null?"A definir":esc(state.teams[r[2]].emoji+" "+tn(r[2]))}</strong></div></div>`).join("")}</div>
+<div class="btns"><button class="btn green" onclick="saveHistory()">📌 Salvar no histórico</button></div>`}
 function renderTable(){
 let s=standings();tableContent.innerHTML=`<div style="overflow:auto"><table><thead><tr><th>Time</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th><th>Pts</th></tr></thead><tbody>
 ${s.map((x,i)=>`<tr><td><b>${i+1}º ${esc(state.teams[x.team].emoji)} ${esc(tn(x.team))}</b></td><td>${x.J}</td><td>${x.V}</td><td>${x.E}</td><td>${x.D}</td><td>${x.GP}</td><td>${x.GC}</td><td>${x.SG}</td><td><b>${x.Pts}</b></td></tr>`).join("")}</tbody></table></div>
-${complete()?`<div class="podium"><div class="place">🥉<strong>${esc(tn(s[2].team))}</strong><small>3º lugar</small></div><div class="place">🏆<strong>${esc(winner(7)==null?"A definir":tn(winner(7)))}</strong><small>Campeão</small></div><div class="place">🥈<strong>${esc(winner(7)==null?"A definir":tn(winner(7)===s[0].team?s[1].team:s[0].team))}</strong><small>Vice-campeão</small></div></div>`:""}`}
+${complete()?podium():""}`}
 function renderHistory(){
 let h=JSON.parse(localStorage.getItem(HIST)||"[]");if(!h.length){historyContent.innerHTML='<div class="empty">Nenhuma rodada salva no histórico ainda.</div>';return}
 historyContent.innerHTML=h.map((r,i)=>`<div class="history"><div><b>${esc(r.name||"Rodada")}</b><br><small>${fd(r.date)}${r.champion!=null?" • 🏆 "+esc(r.teams[r.champion].name):""}</small></div><button class="btn secondary" onclick="restore(${i})">Abrir</button></div>`).join("")}
 function saveState(){persist();alert("Rodada salva neste navegador.")}
-function saveHistory(){let h=JSON.parse(localStorage.getItem(HIST)||"[]");h.unshift({id:Date.now(),name:state.roundName,date:state.roundDate,teams:state.teams,players:state.players,scores:state.scores,pens:state.pens,champion:complete()?winner(7):null});localStorage.setItem(HIST,JSON.stringify(h.slice(0,100)));renderHistory();alert("Rodada adicionada ao histórico.")}
+function saveHistory(){let h=JSON.parse(localStorage.getItem(HIST)||"[]").filter(r=>!(r.name===state.roundName&&r.date===state.roundDate));h.unshift({id:Date.now(),name:state.roundName,date:state.roundDate,teams:state.teams,players:state.players,scores:state.scores,pens:state.pens,champion:complete()?winner(7):null});localStorage.setItem(HIST,JSON.stringify(h.slice(0,100)));renderHistory();alert("Rodada adicionada ao histórico.")}
 function restore(i){let r=JSON.parse(localStorage.getItem(HIST)||"[]")[i];if(!r)return;if(!confirm("Abrir esta rodada no editor?"))return;state={roundName:r.name,roundDate:r.date,teams:r.teams,players:r.players||blank().players,scores:r.scores,pens:r.pens||[null,null]};persist();renderAll();show("setup")}
 function newRound(){if(!confirm("Começar uma nova rodada?"))return;state=blank();persist();renderAll();show("setup")}
 function exportWeek(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));a.download="racha-das-nacoes-"+(state.roundDate||"rodada")+".json";a.click()}
