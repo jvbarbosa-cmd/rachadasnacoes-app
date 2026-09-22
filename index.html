@@ -17,6 +17,7 @@ main{max-width:1100px;margin:auto;padding:16px}.tabs{display:flex;gap:8px;overfl
 label{display:block;font-size:12px;font-weight:700;color:#4b5563;margin-bottom:5px}
 input,select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px;background:white}
 .notice{padding:10px 12px;border-radius:9px;background:#f1f5f9;color:#475569;font-size:13px;margin-bottom:12px}.warn{background:#fffbeb;color:#92400e}
+.status{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px}.status.ok{background:#166534;color:#fff}.status.mid{background:#92400e;color:#fff}.status.bad{background:#7c2d12;color:#fff}
 .team{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.teamtitle{display:flex;align-items:center;gap:8px;margin-bottom:10px}.emoji{font-size:24px}
 .player{display:grid;grid-template-columns:1fr 150px;gap:8px;margin-bottom:7px}
 .games{display:grid;gap:10px}.game{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.gtop{display:flex;justify-content:space-between;color:#6b7280;font-size:12px;margin-bottom:8px}.gname{font-weight:800;color:#111827}
@@ -30,7 +31,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 7px;b
 </style>
 </head>
 <body>
-<header><div class="head"><h1>🏆 RACHA DAS NAÇÕES</h1><div class="sub">Gestão semanal • escalação • jogos • classificação • histórico</div></div></header>
+<header><div class="head"><h1>🏆 RACHA DAS NAÇÕES</h1><div class="sub">Gestão semanal • escalação • jogos • classificação • histórico</div><div class="status mid" id="syncStatus">Conectando...</div></div></header>
 <main>
 <div class="tabs">
 <button class="tab active" data-tab="setup">Escalação</button><button class="tab" data-tab="games">Jogos</button>
@@ -64,17 +65,53 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 7px;b
 <section id="history" class="view" style="display:none"><div class="card"><h2>Histórico das rodadas</h2><div id="historyContent"></div></div></section>
 </main><footer>Racha das Nações • dados salvos neste navegador</footer>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script>
-const KEY="rdn_state_v2",HIST="rdn_history_v2";
+/* ================== CONFIGURAÇÃO DO FIREBASE ==================
+   Cole aqui o objeto do seu projeto: Firebase Console > Configurações
+   do projeto > Seus apps > Web (ícone </>) > firebaseConfig.
+================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCaXo8bvjT2zLpB5QbCQ30v1DT_WFUvN4s",
+  authDomain: "racha-das-nacoes.firebaseapp.com",
+  projectId: "racha-das-nacoes",
+  storageBucket: "racha-das-nacoes.firebasestorage.app",
+  messagingSenderId: "253404639137",
+  appId: "1:253404639137:web:8a56fbf991ddc01157a5e0"
+};
+const ROOM_ID = "racha-das-nacoes"; // troque se quiser separar grupos diferentes no mesmo projeto
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const roomRef = db.collection("rooms").doc(ROOM_ID);
+const historyCol = roomRef.collection("history");
+function flashStatus(t,cls){syncStatus.textContent=t;syncStatus.className="status "+cls}
 const matchups=[[0,1],[2,3],[0,2],[1,3],[0,3],[1,2]];
 const defaults=[{name:"Nauru",emoji:"🇳🇷"},{name:"Butão",emoji:"🇧🇹"},{name:"Chipre",emoji:"🇨🇾"},{name:"Uganda",emoji:"🇺🇬"}];
 
 function blank(){return{roundName:"Racha das Nações",roundDate:new Date().toISOString().slice(0,10),
 teams:JSON.parse(JSON.stringify(defaults)),players:Array.from({length:20},(_,i)=>({name:"",team:i%4})),
 scores:Array.from({length:8},()=>[null,null]),pens:[null,null]}}
-let state=load();
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||blank()}catch(e){return blank()}}
-function persist(){localStorage.setItem(KEY,JSON.stringify(state))}
+let state=blank();
+let historyCache=[];
+let lastLocalWrite=0,saveTimer=null;
+
+function persist(){
+lastLocalWrite=Date.now();
+clearTimeout(saveTimer);
+flashStatus("Salvando…","mid");
+saveTimer=setTimeout(()=>{
+roomRef.set(state).then(()=>flashStatus("Sincronizado","ok")).catch(()=>flashStatus("Erro ao salvar — verifique a internet","bad"));
+},500);
+}
+function persistNow(){
+lastLocalWrite=Date.now();
+clearTimeout(saveTimer);
+flashStatus("Salvando…","mid");
+return roomRef.set(state).then(()=>flashStatus("Sincronizado","ok")).catch(e=>{flashStatus("Erro ao salvar","bad");throw e});
+}
 function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function tn(i){return state.teams[i]?.name||"Time "+(i+1)}
 function fd(d){if(!d)return"";let[y,m,day]=d.split("-");return day+"/"+m+"/"+y}
@@ -116,7 +153,7 @@ if(s[0]==null||s[1]==null)return null;if(s[0]>s[1])return pair[0];if(s[1]>s[0])r
 function ko(k){let q=standings(),pair=k===6?[q[2].team,q[3].team]:[q[0].team,q[1].team],w=winner(k);return{w:w,l:w==null?null:(w===pair[0]?pair[1]:pair[0])}}
 function podium(){
 const c=ko(7),t=ko(6);
-const rows=[["🏆","Campeão",c.w,"gold"],["🥈","Vice-campeão",c.l,""],["🥉","3º lugar",t.w,""],["☠️","Lanterna da rodada",t.l,"lantern"]];
+const rows=[["🏆","Campeão",c.w,"gold"],["🥈","Vice-campeão",c.l,""],["🥉","3º lugar",t.w,""],["🏮","Lanterna da rodada",t.l,"lantern"]];
 return`<div class="podium">${rows.map(r=>`<div class="place ${r[3]}"><span class="medal">${r[0]}</span><div><small>${r[1]}</small><strong>${r[2]==null?"A definir":esc(state.teams[r[2]].emoji+" "+tn(r[2]))}</strong></div></div>`).join("")}</div>
 <div class="btns"><button class="btn green" onclick="saveHistory()">📌 Salvar no histórico</button></div>`}
 function renderTable(){
@@ -124,17 +161,36 @@ let s=standings();tableContent.innerHTML=`<div style="overflow:auto"><table><the
 ${s.map((x,i)=>`<tr><td><b>${i+1}º ${esc(state.teams[x.team].emoji)} ${esc(tn(x.team))}</b></td><td>${x.J}</td><td>${x.V}</td><td>${x.E}</td><td>${x.D}</td><td>${x.GP}</td><td>${x.GC}</td><td>${x.SG}</td><td><b>${x.Pts}</b></td></tr>`).join("")}</tbody></table></div>
 ${complete()?podium():""}`}
 function renderHistory(){
-let h=JSON.parse(localStorage.getItem(HIST)||"[]");if(!h.length){historyContent.innerHTML='<div class="empty">Nenhuma rodada salva no histórico ainda.</div>';return}
-historyContent.innerHTML=h.map((r,i)=>`<div class="history"><div><b>${esc(r.name||"Rodada")}</b><br><small>${fd(r.date)}${r.champion!=null?" • 🏆 "+esc(r.teams[r.champion].name):""}</small></div><button class="btn secondary" onclick="restore(${i})">Abrir</button></div>`).join("")}
-function saveState(){persist();alert("Rodada salva neste navegador.")}
-function saveHistory(){let h=JSON.parse(localStorage.getItem(HIST)||"[]").filter(r=>!(r.name===state.roundName&&r.date===state.roundDate));h.unshift({id:Date.now(),name:state.roundName,date:state.roundDate,teams:state.teams,players:state.players,scores:state.scores,pens:state.pens,champion:complete()?winner(7):null});localStorage.setItem(HIST,JSON.stringify(h.slice(0,100)));renderHistory();alert("Rodada adicionada ao histórico.")}
-function restore(i){let r=JSON.parse(localStorage.getItem(HIST)||"[]")[i];if(!r)return;if(!confirm("Abrir esta rodada no editor?"))return;state={roundName:r.name,roundDate:r.date,teams:r.teams,players:r.players||blank().players,scores:r.scores,pens:r.pens||[null,null]};persist();renderAll();show("setup")}
-function newRound(){if(!confirm("Começar uma nova rodada?"))return;state=blank();persist();renderAll();show("setup")}
+if(!historyCache.length){historyContent.innerHTML='<div class="empty">Nenhuma rodada salva no histórico ainda.</div>';return}
+historyContent.innerHTML=historyCache.map((r,i)=>`<div class="history"><div><b>${esc(r.name||"Rodada")}</b><br><small>${fd(r.date)}${r.champion!=null?" • 🏆 "+esc(r.teams[r.champion].name):""}</small></div><button class="btn secondary" onclick="restore(${i})">Abrir</button></div>`).join("")}
+function saveState(){persistNow().then(()=>alert("Rodada salva e sincronizada.")).catch(()=>alert("Não foi possível salvar agora. Verifique sua internet e tente de novo."))}
+function saveHistory(){
+let id=(state.roundDate||"sem-data")+"_"+(state.roundName||"rodada").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+let entry={name:state.roundName,date:state.roundDate,teams:state.teams,players:state.players,scores:state.scores,pens:state.pens,champion:complete()?winner(7):null,savedAt:Date.now()};
+historyCol.doc(id).set(entry).then(()=>alert("Rodada adicionada/atualizada no histórico.")).catch(()=>alert("Não foi possível salvar o histórico agora. Verifique sua internet."))
+}
+function restore(i){let r=historyCache[i];if(!r)return;if(!confirm("Abrir esta rodada no editor? Isso substitui a rodada atual para os dois dispositivos."))return;state={roundName:r.name,roundDate:r.date,teams:r.teams,players:r.players||blank().players,scores:r.scores,pens:r.pens||[null,null]};persistNow();renderAll();show("setup")}
+function newRound(){if(!confirm("Começar uma nova rodada? Isso substitui a rodada atual para os dois dispositivos."))return;state=blank();persistNow();renderAll();show("setup")}
 function exportWeek(){let a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));a.download="racha-das-nacoes-"+(state.roundDate||"rodada")+".json";a.click()}
-importFile.onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state=JSON.parse(r.result);persist();renderAll();alert("Rodada importada com sucesso.")}catch(x){alert("Arquivo inválido.")}};r.readAsText(f);e.target.value=""}
+importFile.onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state=JSON.parse(r.result);persistNow();renderAll();alert("Rodada importada e sincronizada.")}catch(x){alert("Arquivo inválido.")}};r.readAsText(f);e.target.value=""}
 function show(id){document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===id));document.querySelectorAll(".view").forEach(v=>v.style.display=v.id===id?"block":"none")}
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>show(b.dataset.tab));
-function renderAll(){renderSetup();renderGames();renderTable();renderHistory()}renderAll();
+function renderAll(){renderSetup();renderGames();renderTable();renderHistory()}
+renderAll();
+
+firebase.auth().signInAnonymously().then(()=>{
+roomRef.onSnapshot(snap=>{
+if(Date.now()-lastLocalWrite<1200)return;
+if(snap.exists){state=snap.data()}else{roomRef.set(state)}
+renderAll();
+flashStatus("Sincronizado","ok");
+},()=>flashStatus("Offline — verifique sua conexão","bad"));
+
+historyCol.orderBy("date","desc").limit(100).onSnapshot(snap=>{
+historyCache=snap.docs.map(d=>d.data());
+renderHistory();
+},()=>{});
+}).catch(()=>flashStatus("Erro de autenticação — confira o firebaseConfig","bad"));
 </script>
 </body>
 </html>
