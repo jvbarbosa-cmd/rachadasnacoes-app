@@ -81,7 +81,7 @@ const firebaseConfig = {
   messagingSenderId: "253404639137",
   appId: "1:253404639137:web:8a56fbf991ddc01157a5e0"
 };
-const ROOM_ID = "racha-das-nacoes"; // troque se quiser separar grupos diferentes no mesmo projeto
+const app = initializeApp(firebaseConfig);
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
